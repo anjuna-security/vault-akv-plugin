@@ -10,7 +10,7 @@ var (
 )
 
 const (
-	VaultName  = "anjuna-key-vault"
+	VaultName  = "anjuna-keyvault"
 	SecretName = "hello3"
 )
 
