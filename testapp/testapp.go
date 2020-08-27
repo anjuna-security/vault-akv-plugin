@@ -6,6 +6,8 @@ import (
 	"vault_akv_plugin"
 )
 
+const VaultName = "anjuna-keyvaukt"
+
 func main() {
 	logger := hclog.New(&hclog.LoggerOptions{})
 	akvClient, err := vault_akv_plugin.InitKeyvaultClient(&logger)
@@ -13,7 +15,7 @@ func main() {
 		log.Fatal("Failed initializing AKV client")
 	}
 
-	secrets, err := akvClient.ListSecrets()
+	secrets, err := akvClient.ListSecrets(VaultName)
 	if err != nil {
 		log.Fatal("Failed listing secrets")
 	}
