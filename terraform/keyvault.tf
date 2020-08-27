@@ -8,15 +8,15 @@ provider "azurerm" {
 
 data "azurerm_client_config" "current" {}
 
-resource "azurerm_resource_group" "akv_plugin" {
-  name     = "akv-plugin"
+resource "azurerm_resource_group" "azure_key_vault" {
+  name     = "anjuna-key-vault"
   location = "West US"
 }
 
-resource "azurerm_key_vault" "akv_plugin" {
-  name                        = "akv-plugin-keyvault"
-  location                    = azurerm_resource_group.akv_plugin.location
-  resource_group_name         = azurerm_resource_group.akv_plugin.name
+resource "azurerm_key_vault" "azure_key_vault" {
+  name                        = "anjuna-keyvault"
+  location                    = azurerm_resource_group.azure_key_vault.location
+  resource_group_name         = azurerm_resource_group.azure_key_vault.name
   enabled_for_disk_encryption = false
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   soft_delete_enabled         = true
@@ -58,5 +58,5 @@ resource "azurerm_key_vault" "akv_plugin" {
   }
 }
 
-output "azure_tenant_id" { value = "${azurerm_key_vault.akv_plugin.tenant_id}" }
-output "vault_uri" { value = "${azurerm_key_vault.akv_plugin.vault_uri}" }
+output "azure_tenant_id" { value = "${azurerm_key_vault.azure_key_vault.tenant_id}" }
+output "vault_uri" { value = "${azurerm_key_vault.azure_key_vault.vault_uri}" }
