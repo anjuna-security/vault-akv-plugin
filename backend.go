@@ -3,15 +3,9 @@ package vault_akv_plugin
 import (
 	"context"
 	"github.com/hashicorp/go-hclog"
-	"os"
-	"path"
 	"strings"
 
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
-	"github.com/Azure/go-autorest/autorest/azure"
-
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -43,11 +37,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 // backend wraps the backend framework and adds an Azure Key Vault client
 type backend struct {
 	*framework.Backend
-	akvClient *keyvault.BaseClient
-}
-
-func isEnvironmentSet() bool {
-	return os.Getenv("KVAULT") != ""
+	akvClient *keyvaultClient
 }
 
 func Backend(_ *logical.BackendConfig) *backend {
@@ -60,11 +50,13 @@ func Backend(_ *logical.BackendConfig) *backend {
 		return nil
 	}
 
-	akvClient, err := InitAkvClient()
+	akvClient, err := InitKeyvaultClient(&logger)
 	if err != nil {
 		logger.Error("Failed initializing AVK client")
 		return nil
 	}
+
+	b.akvClient = akvClient
 
 	b.Backend = &framework.Backend{
 		Help:        strings.TrimSpace(pluginHelp),
@@ -72,25 +64,9 @@ func Backend(_ *logical.BackendConfig) *backend {
 	}
 
 	b.Backend.Paths = append(b.Backend.Paths, b.paths()...)
-	b.akvClient = akvClient
 
 	logger.Debug("Initialized backend for Azure Key Vault plugin")
-
 	return &b
-}
-
-func InitAkvClient() (*keyvault.BaseClient, error) {
-	vaultName := os.Getenv("KVAULT")
-	KeyVaultURL = httpsPrefix + vaultName + azure.PublicCloud.KeyVaultDNSSuffix
-
-	akvClient := keyvault.New()
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return nil, err
-	}
-
-	akvClient.Authorizer = authorizer
-	return &akvClient, nil
 }
 
 func (b *backend) paths() []*framework.Path {
@@ -206,25 +182,18 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	}
 
 	logger := b.Logger()
-
 	secretsPath := data.Get("path").(string)
 	logger.Debug(fmt.Sprintf("Listing secrets at path %s", secretsPath))
 
 	akvClient := b.akvClient
-	secrets, err := akvClient.GetSecrets(ctx, KeyVaultURL, nil)
+	secrets, err := akvClient.ListSecrets()
 	if err != nil {
 		logger.Error(err.Error())
 		return logical.ErrorResponse(err.Error()), err
 	}
 
 	logger.Debug("Retrieved secrets from key vault")
-
-	keys := make([]string, 0)
-	for _, secret := range secrets.Values() {
-		keys = append(keys, path.Base(*secret.ID))
-	}
-
-	return logical.ListResponse(keys), nil
+	return logical.ListResponse(secrets), nil
 }
 
 const pluginHelp = `

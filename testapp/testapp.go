@@ -1,15 +1,21 @@
 package main
 
 import (
-	"context"
+	"github.com/hashicorp/go-hclog"
 	"log"
 	"vault_akv_plugin"
 )
 
 func main() {
-	akvClient, err := vault_akv_plugin.InitAkvClient()
+	logger := hclog.New(&hclog.LoggerOptions{})
+	akvClient, err := vault_akv_plugin.InitKeyvaultClient(&logger)
 	if err != nil {
 		log.Fatal("Failed initializing AKV client")
 	}
-	akvClient.GetSecrets(context.Background(), vault_akv_plugin.KeyVaultURL, nil)
+
+	secrets, err := akvClient.ListSecrets()
+	if err != nil {
+		log.Fatal("Failed listing secrets")
+	}
+	log.Printf("%v", secrets)
 }

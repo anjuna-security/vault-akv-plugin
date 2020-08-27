@@ -1,26 +1,18 @@
 package vault_akv_plugin
 
 import (
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
-	"os"
+	"github.com/hashicorp/go-hclog"
 	"os/exec"
 	"testing"
 )
 
 var (
-	akvClient *keyvault.BaseClient
+	akvClient *keyvaultClient
 )
 
-func TestAuthorizer(t *testing.T) {
-	_, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		t.Errorf("Failed initializing authorizer")
-	}
-}
-
 func TestInitAkvClient(t *testing.T) {
-	akvClientRet, err := InitAkvClient()
+	logger := hclog.New(&hclog.LoggerOptions{})
+	akvClientRet, err := InitKeyvaultClient(&logger)
 	if err != nil {
 		t.Errorf("Failed initializing Azure Key Vault client")
 	}
@@ -29,39 +21,24 @@ func TestInitAkvClient(t *testing.T) {
 }
 
 func TestListSecretsUsingAz(t *testing.T) {
-	azExecPath, err := exec.LookPath("az")
-	if err != nil {
-		t.Errorf("Failed finding az")
-	}
 
-	cmdAz := &exec.Cmd {
-		Path: azExecPath,
-		Args: []string { azExecPath, "keyvault", "secret", "list", "--vault-name", "anjuna-key-vault" },
-		Stdout: os.Stdout,
-		Stderr: os.Stdout,
-	}
+	cmdAz := exec.Command("az", "keyvault", "secret", "list", "--vault-name", "anjuna-key-vault")
 
 	t.Logf("Running command %s", cmdAz.String())
 
-	err = cmdAz.Run()
+	output, err := cmdAz.Output()
 	if err != nil {
 		t.Errorf("Failed listing secrets using az")
 	}
-}
 
-/*
-func TestGetSecret(t *testing.T) {
-	_, err := akvClient.GetSecret(context.Background(), KeyVaultURL,
-		"hello", "1")
-	if err != nil {
-		t.Errorf("Failed retrieving secret")
-	}
+	t.Logf("%s", output)
 }
 
 func TestListSecrets(t *testing.T) {
-	_, err := akvClient.GetSecrets(context.Background(), KeyVaultURL, nil)
+	secrets, err := akvClient.ListSecrets()
 	if err != nil {
 		t.Errorf("Failed listing secrets")
 	}
+
+	t.Logf("%v", secrets)
 }
-*/
