@@ -216,9 +216,9 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 
 	// path encodes both the key vault name and the secret name as
 	// <vault name>/<secret name>
-	// in order to read secret "hello" from a vault named "anjuna-key-vault",
+	// in order to delete secret "hello" from a vault named "anjuna-key-vault",
 	// you need to run
-	// $ vault read vault-akv-plugin/anjuna-key-vault/hello
+	// $ vault delete vault-akv-plugin/anjuna-key-vault/hello
 
 	pathComponents := strings.Split(path, "/")
 	if len(pathComponents) != 2 {
