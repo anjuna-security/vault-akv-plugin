@@ -45,12 +45,6 @@ func Backend(_ *logical.BackendConfig) *backend {
 	var b backend
 	logger := hclog.New(&hclog.LoggerOptions{})
 
-	if !isEnvironmentSet() {
-		logger.Error("Environment vars not set. " +
-			"You need to set KVAULT")
-		return nil
-	}
-
 	akvClient, err := InitKeyvaultClient(&logger)
 	if err != nil {
 		logger.Error("Failed initializing AVK client")

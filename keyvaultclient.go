@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-hclog"
-	"os"
 	"os/exec"
 )
 
@@ -15,10 +14,6 @@ const (
 
 type keyvaultClient struct {
 	logger *hclog.Logger
-}
-
-func isEnvironmentSet() bool {
-	return os.Getenv("KVAULT") != ""
 }
 
 func InitKeyvaultClient(logger *hclog.Logger) (*keyvaultClient, error) {

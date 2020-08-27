@@ -11,7 +11,7 @@ var (
 
 const (
 	VaultName  = "anjuna-keyvault"
-	SecretName = "hello3"
+	SecretName = "hello"
 )
 
 func TestInitAkvClient(t *testing.T) {

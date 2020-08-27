@@ -22,6 +22,12 @@ build:
 test:
 	GOOS=$(OS) GOARCH="$(GOARCH)" go test -v
 
+coverage.out:
+	GOOS=$(OS) GOARCH="$(GOARCH)" go test -coverprofile=coverage.out
+
+cover: coverage.out
+	GOOS=$(OS) GOARCH="$(GOARCH)" go tool cover -html=$<
+
 start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
@@ -29,7 +35,7 @@ enable:
 	vault secrets enable $(PLUGIN_NAME)
 
 clean:
-	rm -f ./vault/plugins/$(PLUGIN_NAME) ./testapp/testapp
+	rm -f ./vault/plugins/$(PLUGIN_NAME) ./testapp/testapp coverage.out
 
 fmt:
 	go fmt $$(go list ./...)
