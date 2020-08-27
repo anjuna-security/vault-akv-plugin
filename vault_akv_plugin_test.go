@@ -2,7 +2,6 @@ package vault_akv_plugin
 
 import (
 	"github.com/hashicorp/go-hclog"
-	"os/exec"
 	"testing"
 )
 
@@ -20,20 +19,6 @@ func TestInitAkvClient(t *testing.T) {
 	akvClient = akvClientRet
 }
 
-func TestListSecretsUsingAz(t *testing.T) {
-
-	cmdAz := exec.Command("az", "keyvault", "secret", "list", "--vault-name", "anjuna-key-vault")
-
-	t.Logf("Running command %s", cmdAz.String())
-
-	output, err := cmdAz.Output()
-	if err != nil {
-		t.Errorf("Failed listing secrets using az")
-	}
-
-	t.Logf("%s", output)
-}
-
 func TestListSecrets(t *testing.T) {
 	secrets, err := akvClient.ListSecrets()
 	if err != nil {
@@ -41,4 +26,13 @@ func TestListSecrets(t *testing.T) {
 	}
 
 	t.Logf("%v", secrets)
+}
+
+func TestGetSecret(t *testing.T) {
+	value, err := akvClient.GetSecret("hello")
+	if err != nil {
+		t.Errorf("Failed getting secret")
+	}
+
+	t.Logf("hello=%s", value)
 }

@@ -2,6 +2,7 @@ package vault_akv_plugin
 
 import (
 	"context"
+	"errors"
 	"github.com/hashicorp/go-hclog"
 	"strings"
 
@@ -122,18 +123,29 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	//path := data.Get("path").(string)
+	logger := b.Logger()
 
-	// Decode the data
-	var rawData map[string]interface{}
+	path := data.Get("path").(string)
+	if path == "" {
+		const ErrMsg = "no secret path specified"
+		logger.Error(ErrMsg)
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	}
 
-	//if err := jsonutil.DecodeJSON(b.store[req.ClientToken+"/"+path], &rawData); err != nil {
-	//	return nil, errwrap.Wrapf("json decoding failed: {{err}}", err)
-	//}
+	logger.Debug(fmt.Sprintf("Fetching secret %s", path))
+
+	value, err := b.akvClient.GetSecret(path)
+	if err != nil {
+		const ErrMsg = "failed retrieving secret"
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	}
 
 	// Generate the response
+	secretData := make(map[string]interface{}, 1)
+	secretData[path] = value
+
 	resp := &logical.Response{
-		Data: rawData,
+		Data: secretData,
 	}
 
 	return resp, nil
@@ -185,8 +197,7 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 	secretsPath := data.Get("path").(string)
 	logger.Debug(fmt.Sprintf("Listing secrets at path %s", secretsPath))
 
-	akvClient := b.akvClient
-	secrets, err := akvClient.ListSecrets()
+	secrets, err := b.akvClient.ListSecrets()
 	if err != nil {
 		logger.Error(err.Error())
 		return logical.ErrorResponse(err.Error()), err

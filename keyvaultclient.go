@@ -3,9 +3,16 @@ package vault_akv_plugin
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/hashicorp/go-hclog"
 	"os"
 	"os/exec"
+)
+
+const (
+	VaultName          = "anjuna-key-vault"
+	AzCmd              = "az"
+	KeyvaultSubcommand = "keyvault"
 )
 
 type keyvaultClient struct {
@@ -33,16 +40,10 @@ func InitKeyvaultClient(logger *hclog.Logger) (*keyvaultClient, error) {
 
 func (kvClient *keyvaultClient) ListSecrets() ([]string, error) {
 	logger := *kvClient.logger
-	cmdAz := exec.Command("az", "keyvault", "secret", "list", "--vault-name", "anjuna-key-vault")
-
-	output, err := cmdAz.Output()
+	parsedJson, err := runCmdAndParseJsonArrOutput(logger, "secret", "list", "--vault-name", VaultName)
 	if err != nil {
-		logger.Error("Failed running az")
 		return nil, err
 	}
-
-	var parsedJson []map[string]interface{}
-	json.Unmarshal(output, &parsedJson)
 
 	secrets := make([]string, 0)
 	for _, entry := range parsedJson {
@@ -50,4 +51,49 @@ func (kvClient *keyvaultClient) ListSecrets() ([]string, error) {
 	}
 
 	return secrets, nil
+}
+
+func (kvClient *keyvaultClient) GetSecret(name string) (string, error) {
+	logger := *kvClient.logger
+	parsedJson, err := runCmdAndParseJsonOutput(logger, "secret", "show",
+		"--name", name, "--vault-name", VaultName)
+	if err != nil {
+		return "", err
+	}
+
+	return parsedJson["value"].(string), nil
+}
+
+func runCmdAndParseJsonArrOutput(logger hclog.Logger, args ...string) ([]map[string]interface{}, error) {
+	output, err := runAzKeyvaultCommand(args)
+	if err != nil {
+		logger.Error("Failed running command")
+		return nil, err
+	}
+
+	var parsedJson []map[string]interface{}
+	logger.Info(fmt.Sprintf("%s", output))
+	json.Unmarshal(output, &parsedJson)
+	return parsedJson, nil
+}
+
+func runCmdAndParseJsonOutput(logger hclog.Logger, args ...string) (map[string]interface{}, error) {
+	output, err := runAzKeyvaultCommand(args)
+	if err != nil {
+		logger.Error("Failed running command")
+		return nil, err
+	}
+
+	var parsedJson map[string]interface{}
+	// logger.Info(fmt.Sprintf("%s", output))
+	json.Unmarshal(output, &parsedJson)
+	return parsedJson, nil
+}
+
+func runAzKeyvaultCommand(args []string) ([]byte, error) {
+	azArgs := append([]string{KeyvaultSubcommand}, args...)
+	cmdAz := exec.Command(AzCmd, azArgs...)
+
+	output, err := cmdAz.Output()
+	return output, err
 }
