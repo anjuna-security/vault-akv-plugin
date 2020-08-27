@@ -123,18 +123,32 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	logger := b.Logger()
-
 	path := data.Get("path").(string)
 	if path == "" {
 		const ErrMsg = "no secret path specified"
-		logger.Error(ErrMsg)
+		b.Logger().Error(ErrMsg)
 		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
 	}
 
-	logger.Debug(fmt.Sprintf("Fetching secret %s", path))
+	// path encodes both the key vault name and the secret name as
+	// <vault name>/<secret name>
+	// in order to read secret "hello" from a vault named "anjuna-key-vault",
+	// you need to run
+	// $ vault read vault-akv-plugin/anjuna-key-vault/hello
 
-	value, err := b.akvClient.GetSecret(path)
+	pathComponents := strings.Split(path, "/")
+	if len(pathComponents) != 2 {
+		const ErrMsg = "invalid path specified"
+		b.Logger().Error(ErrMsg)
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	}
+
+	vaultName := pathComponents[0]
+	secretName := pathComponents[1]
+
+	b.Logger().Debug(fmt.Sprintf("Fetching secret %s from vault %s", secretName, vaultName))
+
+	value, err := b.akvClient.GetSecret(vaultName, secretName)
 	if err != nil {
 		const ErrMsg = "failed retrieving secret"
 		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
@@ -142,7 +156,7 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 
 	// Generate the response
 	secretData := make(map[string]interface{}, 1)
-	secretData[path] = value
+	secretData[secretName] = value
 
 	resp := &logical.Response{
 		Data: secretData,
@@ -151,26 +165,40 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 	return resp, nil
 }
 
+func getFirstKeyValueFromMap(m map[string]interface{}) (key string, value string) {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	return keys[0], m[keys[0]].(string)
+}
+
 func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	// Check to make sure that kv pairs provided
-	if len(req.Data) == 0 {
-		return nil, fmt.Errorf("data must be provided to store in secret")
+	// The key vault name is encoded in the path. In order to write
+	// a secret "hello" with value "world" to a vault named "anjuna-key-vault",
+	// you need to run:
+	// $ vault write vault-akv-plugin/anjuna-key-vault hello=world
+
+	vaultName := data.Get("path").(string)
+	if vaultName == "" {
+		const ErrMsg = "vault name is not specified"
+		b.Logger().Error(ErrMsg)
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
 	}
 
-	//path := data.Get("path").(string)
+	name, value := getFirstKeyValueFromMap(req.Data)
 
 	// JSON encode the data
-	//buf, err := json.Marshal(req.Data)
-	//if err != nil {
-	//	return nil, errwrap.Wrapf("json encoding failed: {{err}}", err)
-	//}
-
-	// Store kv pairs in map at specified path
-	//b.store[req.ClientToken+"/"+path] = buf
+	err := b.akvClient.SetSecret(vaultName, name, value)
+	if err != nil {
+		const ErrMsg = "Failed setting secret"
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	}
 
 	return nil, nil
 }
@@ -193,17 +221,16 @@ func (b *backend) handleList(ctx context.Context, req *logical.Request, data *fr
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	logger := b.Logger()
-	secretsPath := data.Get("path").(string)
-	logger.Debug(fmt.Sprintf("Listing secrets at path %s", secretsPath))
+	vaultName := strings.TrimSuffix(data.Get("path").(string), "/")
+	b.Logger().Debug(fmt.Sprintf("Listing secrets in vault %s", vaultName))
 
-	secrets, err := b.akvClient.ListSecrets()
+	secrets, err := b.akvClient.ListSecrets(vaultName)
 	if err != nil {
-		logger.Error(err.Error())
+		b.Logger().Error(err.Error())
 		return logical.ErrorResponse(err.Error()), err
 	}
 
-	logger.Debug("Retrieved secrets from key vault")
+	b.Logger().Debug("Retrieved secrets from key vault")
 	return logical.ListResponse(secrets), nil
 }
 

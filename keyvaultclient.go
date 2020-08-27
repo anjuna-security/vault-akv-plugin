@@ -2,7 +2,6 @@ package vault_akv_plugin
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/hashicorp/go-hclog"
 	"os"
@@ -10,14 +9,12 @@ import (
 )
 
 const (
-	VaultName          = "anjuna-key-vault"
 	AzCmd              = "az"
 	KeyvaultSubcommand = "keyvault"
 )
 
 type keyvaultClient struct {
-	vaultName string
-	logger    *hclog.Logger
+	logger *hclog.Logger
 }
 
 func isEnvironmentSet() bool {
@@ -26,21 +23,13 @@ func isEnvironmentSet() bool {
 
 func InitKeyvaultClient(logger *hclog.Logger) (*keyvaultClient, error) {
 	var kvClient keyvaultClient
-
-	vaultName := os.Getenv("KVAULT")
-	if vaultName == "" {
-		return nil, errors.New("KVAULT environment variable is not defined")
-	}
-
-	kvClient.vaultName = vaultName
 	kvClient.logger = logger
-
 	return &kvClient, nil
 }
 
-func (kvClient *keyvaultClient) ListSecrets() ([]string, error) {
+func (kvClient *keyvaultClient) ListSecrets(vaultName string) ([]string, error) {
 	logger := *kvClient.logger
-	parsedJson, err := runCmdAndParseJsonArrOutput(logger, "secret", "list", "--vault-name", VaultName)
+	parsedJson, err := runCmdAndParseJsonArrOutput(logger, "secret", "list", "--vault-name", vaultName)
 	if err != nil {
 		return nil, err
 	}
@@ -53,15 +42,22 @@ func (kvClient *keyvaultClient) ListSecrets() ([]string, error) {
 	return secrets, nil
 }
 
-func (kvClient *keyvaultClient) GetSecret(name string) (string, error) {
+func (kvClient *keyvaultClient) GetSecret(vaultName string, name string) (string, error) {
 	logger := *kvClient.logger
 	parsedJson, err := runCmdAndParseJsonOutput(logger, "secret", "show",
-		"--name", name, "--vault-name", VaultName)
+		"--name", name, "--vault-name", vaultName)
 	if err != nil {
 		return "", err
 	}
 
 	return parsedJson["value"].(string), nil
+}
+
+func (kvClient *keyvaultClient) SetSecret(vaultName string, name string, value string) error {
+	logger := *kvClient.logger
+	_, err := runCmdAndParseJsonOutput(logger, "secret", "set",
+		"--name", name, "--value", value, "--vault-name", vaultName)
+	return err
 }
 
 func runCmdAndParseJsonArrOutput(logger hclog.Logger, args ...string) ([]map[string]interface{}, error) {
@@ -70,9 +66,9 @@ func runCmdAndParseJsonArrOutput(logger hclog.Logger, args ...string) ([]map[str
 		logger.Error("Failed running command")
 		return nil, err
 	}
+	logger.Trace(fmt.Sprintf("%s", output))
 
 	var parsedJson []map[string]interface{}
-	logger.Info(fmt.Sprintf("%s", output))
 	json.Unmarshal(output, &parsedJson)
 	return parsedJson, nil
 }
@@ -83,9 +79,9 @@ func runCmdAndParseJsonOutput(logger hclog.Logger, args ...string) (map[string]i
 		logger.Error("Failed running command")
 		return nil, err
 	}
+	logger.Trace(fmt.Sprintf("%s", output))
 
 	var parsedJson map[string]interface{}
-	// logger.Info(fmt.Sprintf("%s", output))
 	json.Unmarshal(output, &parsedJson)
 	return parsedJson, nil
 }
@@ -93,7 +89,6 @@ func runCmdAndParseJsonOutput(logger hclog.Logger, args ...string) (map[string]i
 func runAzKeyvaultCommand(args []string) ([]byte, error) {
 	azArgs := append([]string{KeyvaultSubcommand}, args...)
 	cmdAz := exec.Command(AzCmd, azArgs...)
-
 	output, err := cmdAz.Output()
 	return output, err
 }
