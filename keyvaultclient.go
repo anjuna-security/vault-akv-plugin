@@ -28,8 +28,8 @@ func InitKeyvaultClient(logger *hclog.Logger) (*keyvaultClient, error) {
 }
 
 func (kvClient *keyvaultClient) ListSecrets(vaultName string) ([]string, error) {
-	logger := *kvClient.logger
-	parsedJson, err := runCmdAndParseJsonArrOutput(logger, "secret", "list", "--vault-name", vaultName)
+	parsedJson, err := runCmdAndParseJsonArrOutput(*kvClient.logger,
+		"secret", "list", "--vault-name", vaultName)
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +43,8 @@ func (kvClient *keyvaultClient) ListSecrets(vaultName string) ([]string, error) 
 }
 
 func (kvClient *keyvaultClient) GetSecret(vaultName string, name string) (string, error) {
-	logger := *kvClient.logger
-	parsedJson, err := runCmdAndParseJsonOutput(logger, "secret", "show",
-		"--name", name, "--vault-name", vaultName)
+	parsedJson, err := runCmdAndParseJsonOutput(*kvClient.logger,
+		"secret", "show", "--name", name, "--vault-name", vaultName)
 	if err != nil {
 		return "", err
 	}
@@ -54,9 +53,14 @@ func (kvClient *keyvaultClient) GetSecret(vaultName string, name string) (string
 }
 
 func (kvClient *keyvaultClient) SetSecret(vaultName string, name string, value string) error {
-	logger := *kvClient.logger
-	_, err := runCmdAndParseJsonOutput(logger, "secret", "set",
-		"--name", name, "--value", value, "--vault-name", vaultName)
+	_, err := runCmdAndParseJsonOutput(*kvClient.logger,
+		"secret", "set", "--name", name, "--value", value, "--vault-name", vaultName)
+	return err
+}
+
+func (kvClient *keyvaultClient) DeleteSecret(vaultName string, name string) error {
+	_, err := runCmdAndParseJsonOutput(*kvClient.logger,
+		"secret", "delete", "--name", name, "--vault-name", vaultName)
 	return err
 }
 

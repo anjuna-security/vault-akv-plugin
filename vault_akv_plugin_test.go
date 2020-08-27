@@ -9,7 +9,10 @@ var (
 	akvClient *keyvaultClient
 )
 
-const VaultName = "anjuna-key-vault"
+const (
+	VaultName  = "anjuna-key-vault"
+	SecretName = "hello3"
+)
 
 func TestInitAkvClient(t *testing.T) {
 	logger := hclog.New(&hclog.LoggerOptions{})
@@ -31,17 +34,24 @@ func TestListSecrets(t *testing.T) {
 }
 
 func TestSetSecret(t *testing.T) {
-	err := akvClient.SetSecret(VaultName, "hello", "world")
+	err := akvClient.SetSecret(VaultName, SecretName, "world")
 	if err != nil {
 		t.Errorf("Failed setting secret")
 	}
 }
 
 func TestGetSecret(t *testing.T) {
-	value, err := akvClient.GetSecret(VaultName, "hello")
+	value, err := akvClient.GetSecret(VaultName, SecretName)
 	if err != nil {
 		t.Errorf("Failed getting secret")
 	}
 
 	t.Logf("hello=%s", value)
+}
+
+func TestDeleteSecret(t *testing.T) {
+	err := akvClient.DeleteSecret(VaultName, SecretName)
+	if err != nil {
+		t.Errorf("Failed deleting secret")
+	}
 }

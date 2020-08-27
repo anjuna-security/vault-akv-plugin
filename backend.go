@@ -150,19 +150,18 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 
 	value, err := b.akvClient.GetSecret(vaultName, secretName)
 	if err != nil {
-		const ErrMsg = "failed retrieving secret"
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		return logical.ErrorResponse(err.Error()), errors.New(err.Error())
 	}
 
 	// Generate the response
 	secretData := make(map[string]interface{}, 1)
 	secretData[secretName] = value
 
-	resp := &logical.Response{
+	response := &logical.Response{
 		Data: secretData,
 	}
 
-	return resp, nil
+	return response, nil
 }
 
 func getFirstKeyValueFromMap(m map[string]interface{}) (key string, value string) {
@@ -184,7 +183,7 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	// you need to run:
 	// $ vault write vault-akv-plugin/anjuna-key-vault hello=world
 
-	vaultName := data.Get("path").(string)
+	vaultName := strings.TrimSuffix(data.Get("path").(string), "/")
 	if vaultName == "" {
 		const ErrMsg = "vault name is not specified"
 		b.Logger().Error(ErrMsg)
@@ -192,12 +191,12 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	}
 
 	name, value := getFirstKeyValueFromMap(req.Data)
+	b.Logger().Debug(fmt.Sprintf("Setting secret %s to %s in vault %s", name, value, vaultName))
 
 	// JSON encode the data
 	err := b.akvClient.SetSecret(vaultName, name, value)
 	if err != nil {
-		const ErrMsg = "Failed setting secret"
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		return logical.ErrorResponse(err.Error()), errors.New(err.Error())
 	}
 
 	return nil, nil
@@ -208,10 +207,35 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 		return nil, fmt.Errorf("client token empty")
 	}
 
-	//path := data.Get("path").(string)
+	path := data.Get("path").(string)
+	if path == "" {
+		const ErrMsg = "no secret path specified"
+		b.Logger().Error(ErrMsg)
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	}
 
-	// Remove entry for specified path
-	//delete(b.store, path)
+	// path encodes both the key vault name and the secret name as
+	// <vault name>/<secret name>
+	// in order to read secret "hello" from a vault named "anjuna-key-vault",
+	// you need to run
+	// $ vault read vault-akv-plugin/anjuna-key-vault/hello
+
+	pathComponents := strings.Split(path, "/")
+	if len(pathComponents) != 2 {
+		const ErrMsg = "invalid path specified"
+		b.Logger().Error(ErrMsg)
+		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	}
+
+	vaultName := pathComponents[0]
+	secretName := pathComponents[1]
+
+	b.Logger().Debug(fmt.Sprintf("Deleting secret %s from vault %s", secretName, vaultName))
+
+	err := b.akvClient.DeleteSecret(vaultName, secretName)
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), err
+	}
 
 	return nil, nil
 }
