@@ -29,7 +29,7 @@ enable:
 	vault secrets enable $(PLUGIN_NAME)
 
 clean:
-	rm -f ./vault/plugins/$(PLUGIN_NAME)
+	rm -f ./vault/plugins/$(PLUGIN_NAME) ./testapp/testapp
 
 fmt:
 	go fmt $$(go list ./...)
