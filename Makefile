@@ -2,7 +2,7 @@ GOARCH = amd64
 
 UNAME = $(shell uname -s)
 
-PLUGIN_NAME=vault-akv-plugin
+PLUGIN_NAME=azure-key-vault
 
 ifndef OS
 	ifeq ($(UNAME), Linux)
