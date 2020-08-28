@@ -32,7 +32,7 @@ start:
 	vault server -dev -dev-root-token-id=root -dev-plugin-dir=./vault/plugins
 
 enable:
-	vault secrets enable $(PLUGIN_NAME)
+	vault secrets enable -path=anjuna/ $(PLUGIN_NAME) 
 
 clean:
 	rm -f ./vault/plugins/$(PLUGIN_NAME) ./testapp/testapp coverage.out
