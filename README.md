@@ -34,4 +34,4 @@ hello    world
 
 ## License
 
-TODO: add license
+MPL 2.0
