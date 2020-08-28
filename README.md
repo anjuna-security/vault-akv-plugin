@@ -22,11 +22,11 @@ $ export VAULT_ADDR='http://127.0.0.1:8200'
 $ make enable
 
 # Write a secret to the Mock secrets engine
-$ vault write akv-plugin/test hello="world"
+$ vault write azure-key-vault/<keyvault-name> hello="world"
 Success! Data written to: mock/test
 
 # Retrieve secret from Mock secrets engine
-$ vault read akv-plugin/test
+$ vault read azure-key-vault/<keyvault-name>/hello
 Key      Value
 ---      -----
 hello    world
