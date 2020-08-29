@@ -50,7 +50,7 @@ func TestGetSecret(t *testing.T) {
 		t.Errorf("Failed getting secret")
 	}
 
-	t.Logf("hello=%s", value)
+	t.Logf("%s=%s", SecretName, value)
 }
 
 func TestDeleteSecret(t *testing.T) {
