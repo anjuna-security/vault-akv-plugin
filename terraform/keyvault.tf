@@ -41,6 +41,7 @@ resource "azurerm_key_vault" "azure_key_vault" {
 	  "set",
 	  "list",
 	  "delete",
+	  "purge",
     ]
 
     storage_permissions = [
