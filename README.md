@@ -47,6 +47,20 @@ $ terraform apply
 
 in the ``terraform`` directory would create a key vault under your Azure account, assuming you have logged in using the Azure CLI tools.
 
+## Installing Azure CLI tools
+
+You can install the Azure CLI tools on Linux by running 
+
+```
+$ curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+```
+
+On Mac, you can use Homebrew and run
+
+```
+$ brew install az
+```
+
 ## License
 
 The Azure Key Vault plugin for Vault is released under a Mozilla Public License v2.0 (MPL 2.0). For details, check out the LICENSE file.
