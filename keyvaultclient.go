@@ -24,7 +24,7 @@ func InitKeyvaultClient(logger *hclog.Logger) (*keyvaultClient, error) {
 	var kvClient keyvaultClient
 	kvClient.logger = logger
 
-	_, err := exec.LookPath("/usr/bin/az")
+	_, err := exec.LookPath(AzCmd)
 	if err != nil {
 		(*logger).Error("Can't find Azure CLI tools")
 		return nil, err
