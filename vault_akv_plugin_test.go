@@ -59,3 +59,10 @@ func TestDeleteSecret(t *testing.T) {
 		t.Errorf("Failed deleting secret")
 	}
 }
+
+func TestPurgeSecret(t* testing.T) {
+    err := akvClient.PurgeSecret(VaultName, SecretName)
+    if err != nil {
+        t.Logf("%s", err.Error())
+    }
+}

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	AzCmd              = "az"
+	AzCmd              = "/usr/bin/az"
 	KeyvaultSubcommand = "keyvault"
 )
 
@@ -23,6 +23,13 @@ type keyvaultClient struct {
 func InitKeyvaultClient(logger *hclog.Logger) (*keyvaultClient, error) {
 	var kvClient keyvaultClient
 	kvClient.logger = logger
+
+	_, err := exec.LookPath("/usr/bin/az")
+	if err != nil {
+		(*logger).Error("Can't find Azure CLI tools")
+		return nil, err
+	}
+
 	return &kvClient, nil
 }
 
@@ -61,6 +68,16 @@ func (kvClient *keyvaultClient) DeleteSecret(vaultName string, name string) erro
 	_, err := runCmdAndParseJsonOutput(*kvClient.logger,
 		"secret", "delete", "--name", name, "--vault-name", vaultName)
 	return err
+}
+
+func (kvClient *keyvaultClient) PurgeSecret(vaultName string, name string) error {
+    args := []string{"secret", "purge", "--name", name, "--vault-name", vaultName}
+    output, err := runAzKeyvaultCommand(args)
+	if err != nil {
+        (*kvClient.logger).Trace(fmt.Sprintf("%s: %s", output, err.Error()))
+	}
+
+    return nil
 }
 
 func runCmdAndParseJsonArrOutput(logger hclog.Logger, args ...string) ([]map[string]interface{}, error) {
