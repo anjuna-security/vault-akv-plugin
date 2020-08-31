@@ -71,13 +71,13 @@ func (kvClient *keyvaultClient) DeleteSecret(vaultName string, name string) erro
 }
 
 func (kvClient *keyvaultClient) PurgeSecret(vaultName string, name string) error {
-    args := []string{"secret", "purge", "--name", name, "--vault-name", vaultName}
-    output, err := runAzKeyvaultCommand(args)
+	args := []string{"secret", "purge", "--name", name, "--vault-name", vaultName}
+	output, err := runAzKeyvaultCommand(args)
 	if err != nil {
-        (*kvClient.logger).Trace(fmt.Sprintf("%s: %s", output, err.Error()))
+		(*kvClient.logger).Trace(fmt.Sprintf("%s: %s", output, err.Error()))
 	}
 
-    return nil
+	return nil
 }
 
 func runCmdAndParseJsonArrOutput(logger hclog.Logger, args ...string) ([]map[string]interface{}, error) {
