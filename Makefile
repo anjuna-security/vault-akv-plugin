@@ -20,10 +20,10 @@ build:
 	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/$(PLUGIN_NAME) cmd/vault_akv_plugin/main.go
 
 test:
-	GOOS=$(OS) GOARCH="$(GOARCH)" go test -v
+	GOOS=$(OS) GOARCH="$(GOARCH)" go test -v -failfast
 
 coverage.out:
-	GOOS=$(OS) GOARCH="$(GOARCH)" go test -coverprofile=coverage.out
+	GOOS=$(OS) GOARCH="$(GOARCH)" go test -coverprofile=coverage.out -failfast
 
 cover: coverage.out
 	GOOS=$(OS) GOARCH="$(GOARCH)" go tool cover -html=$<
