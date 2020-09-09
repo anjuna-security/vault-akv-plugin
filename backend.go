@@ -126,9 +126,9 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 
 	path := data.Get("path").(string)
 	if path == "" {
-		const ErrMsg = "no secret path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "no secret path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	// path encodes both the key vault name and the secret name as
@@ -139,9 +139,9 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 
 	pathComponents := strings.Split(path, "/")
 	if len(pathComponents) != 2 {
-		const ErrMsg = "invalid path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "invalid path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	vaultName := pathComponents[0]
@@ -188,11 +188,18 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	// $ vault write vault-akv-plugin/anjuna-key-vault hello=world
 
 	splittedPath := strings.Split(data.Get("path").(string), "/")
+
+	if len(splittedPath) != 2 {
+		const errMsg = "vault name and secret name must be specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
+	}
+
 	vaultName := splittedPath[0]
 	if vaultName == "" {
-		const ErrMsg = "vault name is not specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "vault name is not specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	_, value := getFirstKeyValueFromMap(req.Data)
@@ -215,9 +222,9 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 
 	path := data.Get("path").(string)
 	if path == "" {
-		const ErrMsg = "no secret path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "no secret path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	// path encodes both the key vault name and the secret name as
@@ -228,9 +235,9 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 
 	pathComponents := strings.Split(path, "/")
 	if len(pathComponents) != 2 {
-		const ErrMsg = "invalid path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "invalid path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	vaultName := pathComponents[0]
