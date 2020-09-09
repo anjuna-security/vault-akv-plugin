@@ -7,13 +7,12 @@ package vault_akv_plugin
 import (
 	"context"
 	"errors"
-	"github.com/hashicorp/go-hclog"
-	"strings"
-
 	"fmt"
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"strings"
 )
 
 const (
@@ -32,7 +31,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 	b := Backend(conf)
 	if b == nil {
-		return nil, fmt.Errorf("failed initializing backend")
+		return nil, fmt.Errorf("failed initializing backend (%v)", errorMsg)
 	}
 
 	b.Backend.Setup(ctx, conf)
@@ -45,6 +44,8 @@ type backend struct {
 	akvClient *keyvaultClient
 }
 
+var errorMsg string
+
 func Backend(_ *logical.BackendConfig) *backend {
 	var b backend
 	logger := hclog.New(&hclog.LoggerOptions{})
@@ -52,6 +53,7 @@ func Backend(_ *logical.BackendConfig) *backend {
 	akvClient, err := InitKeyvaultClient(&logger)
 	if err != nil {
 		logger.Error("Failed initializing AVK client")
+		errorMsg = err.Error()
 		return nil
 	}
 
@@ -150,6 +152,9 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), errors.New(err.Error())
 	}
+	if value == "" {
+		return nil, nil
+	}
 
 	// Generate the response
 	secretData := make(map[string]interface{}, 1)
@@ -181,14 +186,16 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	// you need to run:
 	// $ vault write vault-akv-plugin/anjuna-key-vault hello=world
 
-	vaultName := strings.TrimSuffix(data.Get("path").(string), "/")
+	splittedPath := strings.Split(data.Get("path").(string), "/")
+	vaultName := splittedPath[0]
 	if vaultName == "" {
 		const ErrMsg = "vault name is not specified"
 		b.Logger().Error(ErrMsg)
 		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
 	}
 
-	name, value := getFirstKeyValueFromMap(req.Data)
+	_, value := getFirstKeyValueFromMap(req.Data)
+	name := splittedPath[len(splittedPath)-1]
 	b.Logger().Debug(fmt.Sprintf("Setting secret %s to %s in vault %s", name, value, vaultName))
 
 	// JSON encode the data
