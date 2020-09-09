@@ -71,7 +71,10 @@ func (kvClient *keyvaultClient) SetSecret(vaultName string, name string, value s
 func (kvClient *keyvaultClient) DeleteSecret(vaultName string, name string) error {
 	_, err := runCmdAndParseJsonOutput(*kvClient.logger,
 		"secret", "delete", "--name", name, "--vault-name", vaultName)
-	return err
+	if err != nil {
+		return err
+	}
+	return kvClient.PurgeSecret(vaultName, name)
 }
 
 func (kvClient *keyvaultClient) PurgeSecret(vaultName string, name string) error {
