@@ -23,6 +23,9 @@ var (
 	KeyVaultURL string
 )
 
+// Storing the error message from the "Backend" function that doesn't return an error
+var errorMsg string
+
 // Factory configures and returns AKV backends
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	if conf == nil {
@@ -43,8 +46,6 @@ type backend struct {
 	*framework.Backend
 	akvClient *keyvaultClient
 }
-
-var errorMsg string
 
 func Backend(_ *logical.BackendConfig) *backend {
 	var b backend
