@@ -55,6 +55,9 @@ func (kvClient *keyvaultClient) GetSecret(vaultName string, name string) (string
 	if err != nil {
 		return "", err
 	}
+
+	// To be compatible with Vault's internal implementation of the KV secret engine, we
+	// return an empty result and no errors when a secret is not found
 	if parsedJson == nil {
 		return "", nil
 	}
