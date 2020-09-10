@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	AzCmd              = "/usr/bin/az"
+	AzCmd              = "az"
 	KeyvaultSubcommand = "keyvault"
 )
 
