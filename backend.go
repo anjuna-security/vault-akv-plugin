@@ -15,17 +15,6 @@ import (
 	"strings"
 )
 
-const (
-	httpsPrefix = "https://"
-)
-
-var (
-	KeyVaultURL string
-)
-
-// Storing the error message from the "Backend" function that doesn't return an error
-var errorMsg string
-
 // Factory configures and returns AKV backends
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	if conf == nil {
@@ -34,10 +23,14 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 	b := Backend(conf)
 	if b == nil {
-		return nil, fmt.Errorf("failed initializing backend (%v)", errorMsg)
+		return nil, fmt.Errorf("failed initializing backend")
 	}
 
-	b.Backend.Setup(ctx, conf)
+	err := b.Backend.Setup(ctx, conf)
+	if err != nil {
+		return nil, err
+	}
+
 	return b, nil
 }
 
@@ -53,8 +46,7 @@ func Backend(_ *logical.BackendConfig) *backend {
 
 	akvClient, err := InitKeyvaultClient(&logger)
 	if err != nil {
-		logger.Error("Failed initializing AVK client")
-		errorMsg = err.Error()
+		logger.Error("Failed initializing AVK client", err.Error())
 		return nil
 	}
 
@@ -110,7 +102,7 @@ func (b *backend) paths() []*framework.Path {
 	}
 }
 
-func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, _ *framework.FieldData) (bool, error) {
 	out, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {
 		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
@@ -119,7 +111,7 @@ func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request
 	return out != nil, nil
 }
 
-func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
@@ -177,7 +169,7 @@ func getFirstKeyValueFromMap(m map[string]interface{}) (key string, value string
 	return keys[0], m[keys[0]].(string)
 }
 
-func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleWrite(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
@@ -215,7 +207,7 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	return nil, nil
 }
 
-func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleDelete(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
@@ -253,7 +245,7 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	return nil, nil
 }
 
-func (b *backend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleList(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
