@@ -7,21 +7,12 @@ package vault_akv_plugin
 import (
 	"context"
 	"errors"
-	"github.com/hashicorp/go-hclog"
-	"strings"
-
 	"fmt"
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-)
-
-const (
-	httpsPrefix = "https://"
-)
-
-var (
-	KeyVaultURL string
+	"strings"
 )
 
 // Factory configures and returns AKV backends
@@ -35,7 +26,11 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 		return nil, fmt.Errorf("failed initializing backend")
 	}
 
-	b.Backend.Setup(ctx, conf)
+	err := b.Backend.Setup(ctx, conf)
+	if err != nil {
+		return nil, err
+	}
+
 	return b, nil
 }
 
@@ -51,7 +46,7 @@ func Backend(_ *logical.BackendConfig) *backend {
 
 	akvClient, err := InitKeyvaultClient(&logger)
 	if err != nil {
-		logger.Error("Failed initializing AVK client")
+		logger.Error("Failed initializing AVK client", err.Error())
 		return nil
 	}
 
@@ -107,7 +102,7 @@ func (b *backend) paths() []*framework.Path {
 	}
 }
 
-func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request, _ *framework.FieldData) (bool, error) {
 	out, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {
 		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
@@ -116,16 +111,16 @@ func (b *backend) handleExistenceCheck(ctx context.Context, req *logical.Request
 	return out != nil, nil
 }
 
-func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleRead(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
 
 	path := data.Get("path").(string)
 	if path == "" {
-		const ErrMsg = "no secret path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "no secret path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	// path encodes both the key vault name and the secret name as
@@ -136,9 +131,9 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 
 	pathComponents := strings.Split(path, "/")
 	if len(pathComponents) != 2 {
-		const ErrMsg = "invalid path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "invalid path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	vaultName := pathComponents[0]
@@ -149,6 +144,9 @@ func (b *backend) handleRead(ctx context.Context, req *logical.Request, data *fr
 	value, err := b.akvClient.GetSecret(vaultName, secretName)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), errors.New(err.Error())
+	}
+	if value == "" {
+		return nil, nil
 	}
 
 	// Generate the response
@@ -171,7 +169,7 @@ func getFirstKeyValueFromMap(m map[string]interface{}) (key string, value string
 	return keys[0], m[keys[0]].(string)
 }
 
-func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleWrite(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
@@ -181,14 +179,23 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	// you need to run:
 	// $ vault write vault-akv-plugin/anjuna-key-vault hello=world
 
-	vaultName := strings.TrimSuffix(data.Get("path").(string), "/")
-	if vaultName == "" {
-		const ErrMsg = "vault name is not specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+	splittedPath := strings.Split(data.Get("path").(string), "/")
+
+	if len(splittedPath) != 2 {
+		const errMsg = "vault name and secret name must be specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
-	name, value := getFirstKeyValueFromMap(req.Data)
+	vaultName := splittedPath[0]
+	if vaultName == "" {
+		const errMsg = "vault name is not specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
+	}
+
+	_, value := getFirstKeyValueFromMap(req.Data)
+	name := splittedPath[len(splittedPath)-1]
 	b.Logger().Debug(fmt.Sprintf("Setting secret %s to %s in vault %s", name, value, vaultName))
 
 	// JSON encode the data
@@ -200,16 +207,16 @@ func (b *backend) handleWrite(ctx context.Context, req *logical.Request, data *f
 	return nil, nil
 }
 
-func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleDelete(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}
 
 	path := data.Get("path").(string)
 	if path == "" {
-		const ErrMsg = "no secret path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "no secret path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	// path encodes both the key vault name and the secret name as
@@ -220,9 +227,9 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 
 	pathComponents := strings.Split(path, "/")
 	if len(pathComponents) != 2 {
-		const ErrMsg = "invalid path specified"
-		b.Logger().Error(ErrMsg)
-		return logical.ErrorResponse(ErrMsg), errors.New(ErrMsg)
+		const errMsg = "invalid path specified"
+		b.Logger().Error(errMsg)
+		return logical.ErrorResponse(errMsg), errors.New(errMsg)
 	}
 
 	vaultName := pathComponents[0]
@@ -238,7 +245,7 @@ func (b *backend) handleDelete(ctx context.Context, req *logical.Request, data *
 	return nil, nil
 }
 
-func (b *backend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) handleList(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		return nil, fmt.Errorf("client token empty")
 	}

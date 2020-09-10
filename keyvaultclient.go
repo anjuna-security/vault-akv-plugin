@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-hclog"
 	"os/exec"
+	"strings"
 )
 
 const (
@@ -55,6 +56,12 @@ func (kvClient *keyvaultClient) GetSecret(vaultName string, name string) (string
 		return "", err
 	}
 
+	// To be compatible with Vault's internal implementation of the KV secret engine, we
+	// return an empty result and no errors when a secret is not found
+	if parsedJson == nil {
+		return "", nil
+	}
+
 	return parsedJson["value"].(string), nil
 }
 
@@ -67,7 +74,10 @@ func (kvClient *keyvaultClient) SetSecret(vaultName string, name string, value s
 func (kvClient *keyvaultClient) DeleteSecret(vaultName string, name string) error {
 	_, err := runCmdAndParseJsonOutput(*kvClient.logger,
 		"secret", "delete", "--name", name, "--vault-name", vaultName)
-	return err
+	if err != nil {
+		return err
+	}
+	return kvClient.PurgeSecret(vaultName, name)
 }
 
 func (kvClient *keyvaultClient) PurgeSecret(vaultName string, name string) error {
@@ -96,6 +106,12 @@ func runCmdAndParseJsonArrOutput(logger hclog.Logger, args ...string) ([]map[str
 func runCmdAndParseJsonOutput(logger hclog.Logger, args ...string) (map[string]interface{}, error) {
 	output, err := runAzKeyvaultCommand(args)
 	if err != nil {
+		// Unlike Vault, AKV returns an error (SecretNotFound) when the secret isn't found
+		// Returning nil, nil similar to Vault's implementation instead of an error
+		if strings.Contains(string(output), "SecretNotFound") {
+			return nil, nil
+		}
+
 		logger.Error("Failed running command")
 		return nil, err
 	}
@@ -109,6 +125,6 @@ func runCmdAndParseJsonOutput(logger hclog.Logger, args ...string) (map[string]i
 func runAzKeyvaultCommand(args []string) ([]byte, error) {
 	azArgs := append([]string{KeyvaultSubcommand}, args...)
 	cmdAz := exec.Command(AzCmd, azArgs...)
-	output, err := cmdAz.Output()
+	output, err := cmdAz.CombinedOutput()
 	return output, err
 }
